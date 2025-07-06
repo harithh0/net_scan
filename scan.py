@@ -41,7 +41,8 @@ class Setup:
         print("Scan finished")
         """
         - go through the packet we sent and received from the answered tuple. Packet is of IP type
-        - accessing the TCP layer of each packet
+        - accessing the TCP layer of each packet and checking to make sure the sent and recv ports match and that the recv packet TCP layer has a flag of SYN ACK
+        - if it the port is closed the host will send a packet with RST ACK flags
         """
         for sent, recv in answered:
             if sent[TCP].dport == recv[TCP].sport and recv[TCP].flags == "SA":
@@ -74,26 +75,38 @@ class Setup:
         - Unlike TCP where we recieve a RST (reset) = true packet, in UDP if the request does not go through the dest will send a ICMP Type 3 Code 3 (Port Unreachable)
             response, unless filitered
         """
-        print(response)
-        if response:  # makes sure we actually get a response, we will recieve someting if it fails or goes through
-            if response.haslayer(DNS):
+        # makes sure we actually get a response, we will recieve someting if it fails (ICMP) or goes through
+        if response:
+            # original DNS query is embedded in the ICMP error message if it fails
+            if response.haslayer(ICMP):
+                icmp_layer = response[ICMP]
+                if icmp_layer.type == 3 and icmp_layer.code == 3:
+                    print(
+                        f"No DNS server found on {self.host} (port unreachable)"
+                    )
+            elif response.haslayer(DNS):
                 dns_layer = response[DNS]
+                # make sure that its a valid DNS response (no errors)
                 if dns_layer.qr == 1 and dns_layer.rcode == 0:
                     print(f"{self.host} is a DNS Server")
-                else:
-                    if response.haslayer(ICMP):
-                        icmp_layer = response[ICMP]
-                        if icmp_layer.type == 3 and icmp_layer.code == 3:
-                            print(
-                                f"No DNS server found on {self.host} (port unreachable)"
-                            )
             else:
                 print(f"No DNS server found on {self.host}")
         else:
+            # if response was empty (likely no ICMP) packet sent from host
             print(f"No DNS server found on {self.host}")
 
 
+# while True:
+#     ip_target_input = input("Enter ip: ")
+#     try:
+#         ip_target = ipaddress.ip_address(ip_target_input)
+#         break
+#     except ValueError:
+#         print("Please enter valid IP address")
+
 # x = Setup("8.8.8.8")
-x = Setup("127.0.0.1")
+x = Setup("10.0.0.192")
+
+# x = Setup("10.0.0.1")
 x.syn_scan()
-x.dns_scan()
+# x.dns_scan()
