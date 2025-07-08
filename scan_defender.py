@@ -9,36 +9,52 @@
     'honey_ports' and listed in 'ports' for IP address in the blocked list
 """
 
-
 from scapy.all import *
+
 ip = "10.0.0.113"
-safe_ports = [22,80]
-honey_ports = [8080,8443]
+safe_ports = [22, 80]
+honey_ports = [8080, 8443]
 
 blocked_ips = []
 
 
 def analyzePackets(passed_packet):
+    if passed_packet[IP].src in blocked_ips and passed_packet[
+            TCP].dport in safe_ports:
+        response_packet = IP(src=passed_packet[IP].dst,
+                             dst=passed_packet[IP].src) / TCP(
+                                 sport=passed_packet[TCP].dport,
+                                 dport=passed_packet[TCP].sport,
+                                 ack=passed_packet[TCP].seq + 1,
+                                 flags="R",
+                             )
 
+    send(passed_packet, verbose=0)
 
     # if the packet is meant for one of our honey ports
-    if (passed_packet[IP].dport in honey_ports):
+    if passed_packet[IP].dport in honey_ports:
         # send fake SYN ACK
         """
         - relecting the request with a fake SYN ACK response
         """
-        response_packet = IP(src=passed_packet[IP].dst, dst=passed_packet[IP].src)/\
-        TCP(sport=passed_packet[TCP].dport, dport=passed_packet[TCP].sport, ack=passed_packet[TCP].seq+1)
+        response_packet = IP(src=passed_packet[IP].dst,
+                             dst=passed_packet[IP].src) / TCP(
+                                 sport=passed_packet[TCP].dport,
+                                 dport=passed_packet[TCP].sport,
+                                 ack=passed_packet[TCP].seq + 1,
+                             )
 
         send(response_packet, verbose=0)
+        blocked_ips.append(response_packet[IP].src)
         print(passed_packet)
 
+
 # creates Berkeley Packet Filter (BPF) string - a search filter for packets
-# tells scapy to 'only capture TCP packets where the dest. IP addr is <ip> 
+# tells scapy to 'only capture TCP packets where the dest. IP addr is <ip>
 # removes other types of network traffic passing through
-f = "dst host "+ip+" and tcp"
+f = "dst host " + ip + " and tcp"
 
 # scapy function that captures packets in real time -- only captures matching packets if filter passed
 # everytime it sniffs a packet it will send it to our function
 # basically: sniff TCP packets going to <ip> and call our function for each one
-sniff(filter=f,prn=analyzePackets)
+sniff(filter=f, prn=analyzePackets)
