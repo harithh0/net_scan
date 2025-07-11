@@ -13,49 +13,53 @@ from scapy.all import *
 
 ip = "10.0.0.113"
 # ip = "10.0.0.84"
-safe_ports = [22, 80]
-honey_ports = [8080, 8443]
 
-blocked_ips = []
+# WARN: allowed through firewall but no service is running on them will not work, will return true state, I believe its because of the race condition between OS and the script
+safe_ports = [22, 80]
+
+# WARN: interestingly these do not need to be allowed in firewall, but if they are allowed through firewall, it will actually give out the real state of port and you can interact with it if it is opened
+# but if it is denied in firewall/or not there,  it will still be able to send out the fake SA
+# originally if the script was not running and they are not allowed through firewall, it will simply not return a response, (shows as filtered in nmap)
+honey_ports = [8080, 8443, 8081]
+
+blocked_ips = set()
+blocked_ips.add("10.0.0.192")
 
 
 def analyzePackets(passed_packet):
-    # if passed_packet[IP].src in blocked_ips and passed_packet[
-    #         TCP].dport in safe_ports:
-    #     response_packet = IP(src=passed_packet[IP].dst,
-    #                          dst=passed_packet[IP].src) / TCP(
-    #                              sport=passed_packet[TCP].dport,
-    #                              dport=passed_packet[TCP].sport,
-    #                              ack=passed_packet[TCP].seq + 1,
-    #                              flags="R",
-    #                          )
-    #
-    #     send(passed_packet, verbose=0)
-    #
+    response_packet = IP(src=passed_packet[IP].dst,
+                         dst=passed_packet[IP].src) / TCP(
+                             sport=passed_packet[TCP].dport,
+                             dport=passed_packet[TCP].sport,
+                             seq=passed_packet[TCP].ack,
+                             ack=passed_packet[TCP].seq + 1,
+                         )
+    if passed_packet[TCP].dport in safe_ports and passed_packet[
+            IP].src in blocked_ips:
+        print(passed_packet[IP].src + " is in safe ports and blocked ip")
+        response_packet[TCP].flags = "RA"
+        send(response_packet, verbose=0)
+
     # if the packet is meant for one of our honey ports
-    if passed_packet[IP].dport in honey_ports:
+    elif passed_packet[IP].dport in honey_ports:
         # send fake SYN ACK
         """
         - relecting the request with a fake SYN ACK response
         """
-        response_packet = IP(src=passed_packet[IP].dst,
-                             dst=passed_packet[IP].src) / TCP(
-                                 sport=passed_packet[TCP].dport,
-                                 dport=passed_packet[TCP].sport,
-                                 ack=passed_packet[TCP].seq + 1,
-                                 flags="SA",
-                             )
-
+        response_packet[TCP].flags = "SA"
         send(response_packet, verbose=1)
-        # blocked_ips.append(response_packet[IP].src)
+        blocked_ips.add(response_packet[IP].src)
 
 
-# creates Berkeley Packet Filter (BPF) string - a search filter for packets
-# tells scapy to 'only capture TCP packets where the dest. IP addr is <ip>
-# removes other types of network traffic passing through
+""" 
+creates Berkeley Packet Filter (BPF) string - a search filter for packets
+tells scapy to 'only capture TCP packets where the dest. IP addr is <ip>
+removes other types of network traffic passing through
+"""
 f = "dst host " + ip + " and tcp"
-
-# scapy function that captures packets in real time -- only captures matching packets if filter passed
-# everytime it sniffs a packet it will send it to our function
-# basically: sniff TCP packets going to <ip> and call our function for each one
+""" 
+scapy function that captures packets in real time -- only captures matching packets if filter passed
+everytime it sniffs a packet it will send it to our function
+basically: sniff TCP packets going to <ip> and call our function for each one
+"""
 sniff(filter=f, prn=analyzePackets)
