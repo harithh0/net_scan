@@ -11,7 +11,8 @@
 
 from scapy.all import *
 
-ip = "10.0.0.84"
+ip = "10.0.0.113"
+# ip = "10.0.0.84"
 safe_ports = [22, 80]
 honey_ports = [8080, 8443]
 
@@ -42,6 +43,7 @@ def analyzePackets(passed_packet):
                                  sport=passed_packet[TCP].dport,
                                  dport=passed_packet[TCP].sport,
                                  ack=passed_packet[TCP].seq + 1,
+                                 flags="SA",
                              )
 
         send(response_packet, verbose=1)
