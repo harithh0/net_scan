@@ -11,7 +11,7 @@
 
 from scapy.all import *
 
-ip = "10.0.0.113"
+ip = "10.0.0.84"
 safe_ports = [22, 80]
 honey_ports = [8080, 8443]
 
@@ -19,18 +19,18 @@ blocked_ips = []
 
 
 def analyzePackets(passed_packet):
-    if passed_packet[IP].src in blocked_ips and passed_packet[
-            TCP].dport in safe_ports:
-        response_packet = IP(src=passed_packet[IP].dst,
-                             dst=passed_packet[IP].src) / TCP(
-                                 sport=passed_packet[TCP].dport,
-                                 dport=passed_packet[TCP].sport,
-                                 ack=passed_packet[TCP].seq + 1,
-                                 flags="R",
-                             )
-
-    send(passed_packet, verbose=0)
-
+    # if passed_packet[IP].src in blocked_ips and passed_packet[
+    #         TCP].dport in safe_ports:
+    #     response_packet = IP(src=passed_packet[IP].dst,
+    #                          dst=passed_packet[IP].src) / TCP(
+    #                              sport=passed_packet[TCP].dport,
+    #                              dport=passed_packet[TCP].sport,
+    #                              ack=passed_packet[TCP].seq + 1,
+    #                              flags="R",
+    #                          )
+    #
+    #     send(passed_packet, verbose=0)
+    #
     # if the packet is meant for one of our honey ports
     if passed_packet[IP].dport in honey_ports:
         # send fake SYN ACK
@@ -44,9 +44,8 @@ def analyzePackets(passed_packet):
                                  ack=passed_packet[TCP].seq + 1,
                              )
 
-        send(response_packet, verbose=0)
-        blocked_ips.append(response_packet[IP].src)
-        print(passed_packet)
+        send(response_packet, verbose=1)
+        # blocked_ips.append(response_packet[IP].src)
 
 
 # creates Berkeley Packet Filter (BPF) string - a search filter for packets

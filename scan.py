@@ -7,7 +7,7 @@ from scapy.all import DNS, DNSQR, ICMP, IP, TCP, UDP, sr, sr1
 
 
 class Setup:
-    __common_ports = (22, 25, 80, 443, 445, 8080, 8443)
+    __common_ports = (22, 25, 80, 443, 445, 8080, 8443, 12345)
     SOURCE_PORT = 3333
 
     def __init__(self, host):
@@ -42,11 +42,15 @@ class Setup:
         """
         - go through the packet we sent and received from the answered tuple. Packet is of IP type
         - accessing the TCP layer of each packet and checking to make sure the sent and recv ports match and that the recv packet TCP layer has a flag of SYN ACK
-        - if it the port is closed the host will send a packet with RST ACK flags
+        - if it the port is closed (no service running) but allowed through firewall, the host will send a packet with RST ACK flags
         """
+
         for sent, recv in answered:
-            if sent[TCP].dport == recv[TCP].sport and recv[TCP].flags == "SA":
-                print(f"{recv[TCP].sport} open")
+            if sent[TCP].dport == recv[TCP].sport:
+                if recv[TCP].flags == "SA":
+                    print(f"{recv[TCP].sport} open")
+                elif recv[TCP].flags == "RA":
+                    print(f"{recv[TCP].sport} closed")
 
     def dns_scan(self):
         """
