@@ -99,6 +99,24 @@ class Setup:
             # if response was empty (likely no ICMP) packet sent from host
             print(f"No DNS server found on {self.host}")
 
+    def ack_scan(self):
+        """
+        Does ACK scan on target
+        """
+
+        print(f"Scanning (ACK) {self.host}")
+        ack_packet = IP(dst=self.host) / TCP(dport=list(Setup.__common_ports),
+                                             sport=Setup.SOURCE_PORT,
+                                             flags="A")
+
+        ans, unans = sr(ack_packet, timeout=10, verbose=0)
+
+        print("Scan finished")
+        for sent, recv in ans:
+            if sent[TCP].dport == recv[TCP].sport:
+                if recv[TCP].flags == "R":
+                    print(f"{recv[TCP].sport} unfiltered")
+
 
 # while True:
 #     ip_target_input = input("Enter ip: ")
@@ -112,5 +130,6 @@ class Setup:
 x = Setup("10.0.0.192")
 
 # x = Setup("10.0.0.1")
-x.syn_scan()
+# x.syn_scan()
 # x.dns_scan()
+x.ack_scan()

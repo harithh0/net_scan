@@ -1,7 +1,7 @@
 """
 - Scapy can also be used to mislead attackers
 - This script used to protect against scan.py
-- Anyone connecting to a differnet port other than the ones in safe_ports, will be listed in blocked
+- Anyone connecting to a different port other than the ones in safe_ports, will be listed in blocked
     - If a blocked IP is going to access a safe_port, the script will send a RST packet, to trick the user into thinking it is closed
 - It will also make them believe that specific ports are opened listed in 'honey_ports' by sending them SYN ACK messages (instead of defualt RST)
 #NOTE: In some cases, the system the script is running on might also send a response to the requestor along with HoneyScan, which can lead to race conditions, so
@@ -24,6 +24,14 @@ honey_ports = [8080, 8443, 8081]
 
 blocked_ips = set()
 blocked_ips.add("10.0.0.192")
+
+# INFO:
+"""
+workflow
+- blocked ip to valid port -> RST/ACK
+- any ip to honey port -> SYN/ACK + adds to blocked IPS
+- any ip to non-safe port -> SYN/ACK + adds to blocked IPS
+"""
 
 
 def analyzePackets(passed_packet):
