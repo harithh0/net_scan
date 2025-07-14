@@ -154,6 +154,24 @@ class Setup:
         for sent in unans:
             print(f"{sent[TCP].dport} open or filitered")
 
+    def fin_scan(self):
+        print(f"Scanning (FIN) {self.target}")
+
+        fin_packet = IP(dst=self.target) / TCP(
+            sport=Setup.SOURCE_PORT,
+            dport=list(Setup.__common_ports),
+            flags="F",
+        )
+        ans, unans = sr(fin_packet, timeout=2, verbose=0)
+
+        for sent, recv in ans:
+            if sent[TCP].dport == recv[TCP].sport:
+                if recv[TCP].flags == "R":
+                    print(f"{recv[TCP].sport} closed")
+
+        for sent in unans:
+            print(f"{sent[TCP].dport} open or filitered")
+
 
 # while True:
 #     ip_target_input = input("Enter ip: ")
@@ -170,4 +188,5 @@ x = Setup("10.0.0.192")
 # x.syn_scan()
 # x.dns_scan()
 # x.xmas_scan()
-x.null_scan()
+# x.null_scan()
+x.fin_scan()
